@@ -1207,8 +1207,8 @@ async function newRepoModal() {
         body: { name: data.name, description: data.description || '', private: !!data.private, auto_init: !!data.auto_init },
       });
       showToast(`Created "${data.name}"`, 'success');
-      reposCache.items = null;
-      // GitHub /user/repos has a small eventual-consistency delay after create — wait briefly before refreshing
+      // GitHub /user/repos has a small eventual-consistency delay after create — wait briefly before refreshing.
+      // Don't null the cache eagerly: keep the stale list visible until the refresh lands.
       setTimeout(() => { reposCache.items = null; loadRepos(true); }, 1500);
     },
   });
