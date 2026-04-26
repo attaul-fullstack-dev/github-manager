@@ -49,6 +49,8 @@
     --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     --sidebar-w: 240px;
     --bottom-nav-h: 64px;
+    --bottom-nav-h-mobile: 72px;
+    --tap-target: 44px;
   }
 
   * { box-sizing: border-box; }
@@ -455,30 +457,54 @@
   #bottom-nav {
     display: none;
     position: fixed; bottom: 0; left: 0; right: 0;
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
     border-top: 1px solid var(--border);
-    height: var(--bottom-nav-h);
-    padding: 6px env(safe-area-inset-right) calc(6px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+    height: calc(var(--bottom-nav-h-mobile) + env(safe-area-inset-bottom));
+    padding: 4px env(safe-area-inset-right) calc(4px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
     z-index: 50;
     overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
   #bottom-nav::-webkit-scrollbar { display: none; }
-  #bottom-nav .row { display: flex; min-width: 100%; height: 100%; }
+  #bottom-nav .row { display: flex; width: 100%; height: var(--bottom-nav-h-mobile); flex-wrap: nowrap; }
   #bottom-nav .nav-btn {
-    flex: 1; min-width: 70px;
+    flex: 1 0 64px;
+    position: relative;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 2px; color: var(--text2); cursor: pointer; user-select: none;
+    gap: 3px; color: var(--text2); cursor: pointer; user-select: none;
     font-size: 10px; font-weight: 600;
-    border-radius: 8px;
-    transition: color 120ms ease;
+    border-radius: 10px;
+    padding: 6px 4px;
+    min-height: var(--tap-target);
+    transition: color 140ms ease, background 140ms ease, transform 80ms ease;
   }
-  #bottom-nav .nav-btn .ic { width: 20px; height: 20px; }
+  #bottom-nav .nav-btn:active { transform: scale(0.94); background: var(--surface2); }
+  #bottom-nav .nav-btn .ic { width: 22px; height: 22px; font-size: 18px; line-height: 1; transition: transform 160ms ease; }
   #bottom-nav .nav-btn.active { color: var(--accent); }
+  #bottom-nav .nav-btn.active .ic { transform: translateY(-1px) scale(1.06); }
+  #bottom-nav .nav-btn.active::before {
+    content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 3px;
+    background: var(--accent); border-radius: 0 0 3px 3px;
+  }
   #bottom-nav .nav-btn .badge {
-    position: absolute; transform: translate(12px, -10px);
+    position: absolute; top: 4px; right: 22%;
     background: var(--danger); color: white; font-size: 9px; font-weight: 700;
-    padding: 1px 5px; border-radius: 10px;
+    padding: 1px 5px; border-radius: 10px; line-height: 1.2;
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+  @media (max-width: 480px) {
+    #bottom-nav .nav-btn { flex: 1 1 0; min-width: 0; padding: 6px 2px; gap: 2px; font-size: 9.5px; }
+    #bottom-nav .nav-btn .ic { font-size: 17px; }
+    #bottom-nav .nav-btn .badge { right: 18%; transform: translateX(50%); top: 2px; }
+    #bottom-nav .nav-btn span:not(.ic):not(.badge) { font-size: 9.5px; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+  @media (max-width: 359px) {
+    #bottom-nav .nav-btn span:not(.ic):not(.badge) { display: none; }
+    #bottom-nav .nav-btn { gap: 0; }
   }
 
   /* Responsive */
@@ -490,12 +516,66 @@
     #sidebar { display: none; }
     #bottom-nav { display: block; }
     #main-content {
-      padding: 16px;
-      padding-bottom: calc(var(--bottom-nav-h) + 16px + env(safe-area-inset-bottom));
+      padding: 14px 14px 0;
+      padding-bottom: calc(var(--bottom-nav-h-mobile) + 18px + env(safe-area-inset-bottom));
     }
     .grid-3, .grid-2 { grid-template-columns: 1fr; }
-    .page-head h1 { font-size: 20px; }
-    .modal { max-width: 100%; }
+    .page-head { gap: 10px; margin-bottom: 16px; }
+    .page-head > div:first-child { width: 100%; }
+    .page-head h1 { font-size: 22px; line-height: 1.2; }
+    .page-actions { width: 100%; }
+    .page-actions > * { flex: 1 1 auto; }
+    .page-actions select { min-width: 0 !important; flex: 1 1 100% !important; }
+    .page-actions .btn, .page-actions button:not(.btn-icon) { flex: 1 1 auto; }
+    .modal { max-width: 100%; padding: 18px; border-radius: 14px 14px 10px 10px; }
+    .modal .actions { gap: 8px; }
+    .modal .actions > button { flex: 1 1 auto; min-height: var(--tap-target); }
+    .toolbar { gap: 8px; }
+    .toolbar .search { flex: 1 1 100%; min-width: 0; }
+    .toolbar select { flex: 1 1 calc(50% - 4px); min-width: 0; }
+    /* Inputs: 16px prevents iOS zoom on focus */
+    input, textarea, select { font-size: 16px; padding: 11px 13px; }
+    input[type="checkbox"] { min-height: auto; }
+    /* Buttons: bigger tap targets */
+    button, .btn { min-height: var(--tap-target); padding: 10px 14px; }
+    .btn-sm { min-height: 36px; padding: 7px 11px; font-size: 12.5px; }
+    .btn-icon { min-height: var(--tap-target); width: var(--tap-target); height: var(--tap-target); }
+    /* Cards: more breathing room */
+    .card { padding: 14px; border-radius: 12px; }
+    .repo-item { padding: 14px; border-radius: 12px; }
+    .repo-item .row1 { gap: 8px; }
+    .repo-item .actions { margin-left: 0; width: 100%; gap: 6px; flex-wrap: wrap; }
+    .repo-item .actions .btn-sm { flex: 1 1 auto; }
+    /* Profile card stacks */
+    .profile-card { flex-direction: column; align-items: flex-start; text-align: left; gap: 12px; }
+    .profile-card .avatar { width: 64px; height: 64px; }
+    .stat-card .value { font-size: 24px; }
+    /* Toasts: clear of bottom nav */
+    #toast-container {
+      bottom: calc(var(--bottom-nav-h-mobile) + 14px + env(safe-area-inset-bottom));
+      right: 12px; left: 12px;
+    }
+    .toast { min-width: 0; max-width: 100%; }
+    /* File Explorer: stack tree above editor; hide tree when file open */
+    .editor-wrap { gap: 10px; min-height: 0; }
+    .file-tree { max-height: 50vh; }
+    .editor-wrap.has-file .file-tree { display: none; }
+    .editor-wrap.has-file .editor { min-height: calc(100vh - var(--bottom-nav-h-mobile) - 220px); }
+    .editor .head { padding: 8px 10px; gap: 6px; }
+    .editor .filename { font-size: 13px; }
+    .editor textarea.edit-area { min-height: 50vh; }
+    .editor .gutter { min-width: 36px; padding: 12px 6px; font-size: 11.5px; }
+    .editor .code { font-size: 12px; }
+    /* Search results breathing room */
+    #search-results .grid-3 { gap: 10px; }
+    /* Hide breadcrumb separators that overflow */
+    .breadcrumb { font-size: 11.5px; }
+  }
+
+  /* Back-to-tree button (mobile only) */
+  .mobile-only { display: none; }
+  @media (max-width: 768px) {
+    .mobile-only { display: inline-flex; }
   }
 
   /* Utilities */
@@ -1127,8 +1207,9 @@ async function newRepoModal() {
         body: { name: data.name, description: data.description || '', private: !!data.private, auto_init: !!data.auto_init },
       });
       showToast(`Created "${data.name}"`, 'success');
-      reposCache.items = null;
-      await loadRepos(true);
+      // GitHub /user/repos has a small eventual-consistency delay after create — wait briefly before refreshing.
+      // Don't null the cache eagerly: keep the stale list visible until the refresh lands.
+      setTimeout(() => { reposCache.items = null; loadRepos(true); }, 1500);
     },
   });
 }
@@ -1356,6 +1437,14 @@ async function loadTree() {
   }
 }
 
+function closeFile() {
+  exState.file = null; exState.fileSha = null; exState.fileText = ''; exState.editing = false;
+  exState.findQuery = ''; exState.findMatches = []; exState.findIdx = 0;
+  const wrap = $('#editor-wrap'); if (wrap) wrap.classList.remove('has-file');
+  const panel = $('#editor-panel');
+  if (panel) panel.innerHTML = `<div class="empty"><h3>No file selected</h3>Pick a file from the tree to view or edit it.</div>`;
+}
+
 async function openFile(path, sha, name) {
   const { owner, repo, branch } = exState;
   const panel = $('#editor-panel');
@@ -1379,10 +1468,12 @@ async function openFile(path, sha, name) {
 
 function renderEditor() {
   const panel = $('#editor-panel');
+  const wrap = $('#editor-wrap'); if (wrap) wrap.classList.add('has-file');
   const path = exState.file;
   const lang = langFromExt(path);
   panel.innerHTML = `
     <div class="head">
+      <button class="btn-sm btn-ghost mobile-only" id="btn-back-tree" title="Back to file list">←</button>
       <div class="filename">${escapeHtml(path)} <span class="pill" style="margin-left:6px">${escapeHtml(lang)}</span></div>
       <button class="btn-sm" id="btn-find" title="Find (Ctrl+F)">🔎</button>
       ${exState.editing
@@ -1400,6 +1491,7 @@ function renderEditor() {
     <div class="body" id="editor-body"></div>
   `;
   $('#btn-find').onclick = toggleFindBar;
+  $('#btn-back-tree').onclick = closeFile;
   $('#btn-delete').onclick = () => deleteContentFlow(exState.file, exState.fileSha, false);
   if (exState.editing) {
     $('#btn-cancel').onclick = () => { exState.editing = false; renderEditor(); };
@@ -1550,6 +1642,7 @@ async function deleteContentFlow(path, sha, isDir) {
     showToast('Deleted', 'success');
     if (exState.file === path) {
       exState.file = null; exState.fileSha = null; exState.fileText = '';
+      const wrap = $('#editor-wrap'); if (wrap) wrap.classList.remove('has-file');
       $('#editor-panel').innerHTML = `<div class="empty"><h3>No file selected</h3></div>`;
     }
     loadTree();
