@@ -1,0 +1,2211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#141414" />
+<meta name="description" content="GitHub Manager — kelola repo, file, commit, dan gist GitHub langsung dari browser." />
+<title>GitHub Manager</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<!-- highlight.js -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+<!-- Chart.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- JSZip -->
+<script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<style>
+  :root {
+    --bg: #141414;
+    --surface: #1c1c1e;
+    --surface2: #242428;
+    --surface3: #2e2e34;
+    --surface4: #38383f;
+    --border: rgba(255, 255, 255, 0.07);
+    --border2: rgba(255, 255, 255, 0.12);
+    --text: #ededef;
+    --text2: #b0b0b8;
+    --muted: #5c5c66;
+    --accent: #a855f7;
+    --accent-dim: rgba(168, 85, 247, 0.15);
+    --accent-hover: #b975f8;
+    --danger: #ef4444;
+    --danger-dim: rgba(239, 68, 68, 0.15);
+    --success: #22c55e;
+    --success-dim: rgba(34, 197, 94, 0.15);
+    --warning: #f59e0b;
+    --warning-dim: rgba(245, 158, 11, 0.15);
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --sidebar-w: 240px;
+    --bottom-nav-h: 64px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); }
+  code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; }
+  ::selection { background: var(--accent-dim); color: var(--text); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--surface4); }
+
+  /* Buttons */
+  button, .btn {
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+    line-height: 1.2;
+  }
+  button:hover, .btn:hover { background: var(--surface3); border-color: var(--border2); }
+  button:active, .btn:active { transform: scale(0.98); }
+  button:disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+  .btn-danger:hover { background: #ff5a5a; border-color: #ff5a5a; }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--text2); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-icon { padding: 6px; width: 32px; height: 32px; }
+
+  /* Inputs */
+  input, textarea, select {
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    width: 100%;
+    outline: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* Layout */
+  #app-wrapper { display: flex; min-height: 100vh; }
+  #sidebar {
+    width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 18px 12px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  #sidebar .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px 18px;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text);
+  }
+  #sidebar .brand .logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #6d28d9);
+    display: grid; place-items: center; color: white; font-weight: 800;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    cursor: pointer;
+    font-weight: 500;
+    user-select: none;
+    transition: background 120ms ease, color 120ms ease;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-item .ic { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-item .badge {
+    margin-left: auto; background: var(--danger); color: white;
+    font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+  }
+
+  #main-content {
+    flex: 1;
+    padding: 24px 28px;
+    min-width: 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  .page-head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 14px; margin-bottom: 22px;
+  }
+  .page-head h1 { font-size: 22px; margin: 0; font-weight: 700; }
+  .page-head .sub { color: var(--text2); font-size: 13px; margin-top: 2px; }
+  .page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .card + .card { margin-top: 14px; }
+  .grid { display: grid; gap: 14px; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .stat-card { display: flex; flex-direction: column; gap: 6px; }
+  .stat-card .label { color: var(--text2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .stat-card .value { font-size: 28px; font-weight: 700; color: var(--text); }
+  .stat-card .delta { color: var(--text2); font-size: 12px; }
+
+  /* Profile card */
+  .profile-card { display: flex; align-items: center; gap: 16px; }
+  .profile-card .avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--surface3); border: 2px solid var(--accent-dim);
+    object-fit: cover;
+  }
+  .profile-card .info h2 { margin: 0; font-size: 18px; }
+  .profile-card .info p { margin: 2px 0 0; color: var(--text2); font-size: 13px; }
+  .profile-card .info .meta { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; color: var(--text2); font-size: 12px; }
+
+  /* Repo list */
+  .repo-list { display: flex; flex-direction: column; gap: 10px; }
+  .repo-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: border-color 120ms ease, transform 120ms ease;
+  }
+  .repo-item:hover { border-color: var(--border2); }
+  .repo-item .row1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .repo-item .name { font-weight: 700; font-size: 15px; color: var(--text); }
+  .repo-item .desc { color: var(--text2); font-size: 13px; }
+  .repo-item .meta { display: flex; gap: 14px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+  .repo-item .actions { display: flex; gap: 6px; margin-left: auto; }
+  .lang-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+
+  /* Pills / chips */
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; font-size: 11px; font-weight: 600;
+    border-radius: 10px; background: var(--surface3); color: var(--text2);
+    border: 1px solid var(--border2);
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .pill.public { color: var(--success); background: var(--success-dim); border-color: transparent; }
+  .pill.private { color: var(--warning); background: var(--warning-dim); border-color: transparent; }
+  .pill.accent { color: var(--accent); background: var(--accent-dim); border-color: transparent; }
+
+  /* Toolbar */
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .toolbar .search { flex: 1; min-width: 220px; }
+  .toolbar select { width: auto; }
+
+  /* Empty / loading states */
+  .empty { padding: 40px 20px; text-align: center; color: var(--text2); }
+  .empty h3 { color: var(--text); margin: 0 0 6px; font-size: 16px; }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface2) 0%, var(--surface3) 50%, var(--surface2) 100%);
+    background-size: 200% 100%;
+    animation: pulse 1.4s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+  }
+  @keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .sk-row { height: 14px; margin: 8px 0; }
+  .sk-card { height: 80px; margin: 0 0 10px; }
+
+  /* Toast */
+  #toast-container {
+    position: fixed; bottom: 20px; right: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+    z-index: 9999; pointer-events: none;
+  }
+  .toast {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    min-width: 240px; max-width: 380px;
+    font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 10px;
+    pointer-events: auto;
+    animation: toast-in 200ms ease forwards;
+    border-left: 3px solid var(--accent);
+  }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error   { border-left-color: var(--danger); }
+  .toast.warning { border-left-color: var(--warning); }
+  .toast.info    { border-left-color: var(--accent); }
+  .toast.removing { animation: toast-out 180ms ease forwards; }
+  @keyframes toast-in  { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes toast-out { to   { transform: translateX(20px); opacity: 0; } }
+
+  /* Modal */
+  #modal-container {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(0, 0, 0, 0.6);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; backdrop-filter: blur(2px);
+  }
+  #modal-container.active { display: flex; animation: fade-in 160ms ease; }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    width: 100%; max-width: 480px;
+    max-height: 90vh; overflow: auto;
+    padding: 22px;
+    animation: modal-in 200ms ease;
+  }
+  @keyframes modal-in { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal h3 { margin: 0 0 12px; font-size: 18px; }
+  .modal .body { color: var(--text2); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+  .modal .body strong { color: var(--text); font-weight: 600; }
+  .modal .actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .form-row { margin-bottom: 14px; }
+
+  /* Editor */
+  .editor-wrap { display: grid; grid-template-columns: 280px 1fr; gap: 14px; min-height: 480px; }
+  .file-tree {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .file-tree .head {
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+    background: var(--surface2);
+  }
+  .file-tree .body { flex: 1; overflow: auto; padding: 6px; }
+  .tree-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: var(--radius-sm);
+    cursor: pointer; user-select: none; font-size: 13px;
+  }
+  .tree-item:hover { background: var(--surface2); }
+  .tree-item.active { background: var(--accent-dim); color: var(--accent); }
+  .tree-item .ic { font-size: 14px; }
+
+  .breadcrumb { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; color: var(--text2); padding: 6px 12px; }
+  .breadcrumb span { cursor: pointer; }
+  .breadcrumb span:hover { color: var(--text); }
+  .breadcrumb .sep { color: var(--muted); cursor: default; }
+
+  .editor {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex; flex-direction: column;
+    overflow: hidden; min-height: 400px;
+  }
+  .editor .head {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    border-bottom: 1px solid var(--border); background: var(--surface2);
+    flex-wrap: wrap;
+  }
+  .editor .filename { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .editor .find-bar { display: flex; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .editor .find-bar input { padding: 6px 10px; font-size: 13px; }
+  .editor .find-bar .info { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .editor .body { flex: 1; overflow: auto; position: relative; }
+  .editor pre { margin: 0; padding: 0; }
+  .editor .code-area { display: flex; }
+  .editor .gutter {
+    flex-shrink: 0; padding: 12px 10px; text-align: right;
+    color: var(--muted); border-right: 1px solid var(--border);
+    user-select: none; font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px; line-height: 1.55; min-width: 44px;
+    background: var(--surface);
+  }
+  .editor .code {
+    flex: 1; padding: 12px 14px; overflow: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+    line-height: 1.55; white-space: pre; tab-size: 2;
+  }
+  .editor .code .ln { display: block; min-height: 1.55em; }
+  .editor .code mark.find {
+    background: rgba(245, 158, 11, 0.45); color: inherit; border-radius: 2px; padding: 0 1px;
+  }
+  .editor .code mark.find.current {
+    background: var(--warning); color: #111;
+  }
+  .editor textarea.edit-area {
+    flex: 1; min-height: 460px; padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+    border: none; border-radius: 0; line-height: 1.55;
+    background: var(--surface);
+    white-space: pre; tab-size: 2;
+  }
+  .editor textarea.edit-area:focus { box-shadow: none; border-color: transparent; }
+  .progress-bar { height: 6px; background: var(--surface3); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .progress-bar > div { height: 100%; background: var(--accent); transition: width 200ms ease; width: 0%; }
+
+  /* Commit list */
+  .commit-list { display: flex; flex-direction: column; gap: 8px; }
+  .commit-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+    cursor: pointer;
+  }
+  .commit-item .msg { font-weight: 600; }
+  .commit-item .meta { color: var(--text2); font-size: 12px; margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .commit-detail { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: none; }
+  .commit-item.expanded .commit-detail { display: block; }
+  .commit-detail .file-row {
+    display: flex; gap: 10px; padding: 6px 0; align-items: center;
+    font-size: 13px; border-bottom: 1px dashed var(--border);
+  }
+  .commit-detail .file-row:last-child { border-bottom: none; }
+  .file-status {
+    width: 70px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    text-align: center; padding: 2px 6px; border-radius: 4px;
+  }
+  .file-status.added    { background: var(--success-dim); color: var(--success); }
+  .file-status.modified { background: var(--warning-dim); color: var(--warning); }
+  .file-status.removed  { background: var(--danger-dim); color: var(--danger); }
+  .file-status.renamed  { background: var(--accent-dim); color: var(--accent); }
+  .diff-stats { color: var(--text2); font-size: 12px; margin-left: auto; }
+  .diff-stats .add { color: var(--success); }
+  .diff-stats .del { color: var(--danger); }
+
+  /* Notification list */
+  .notif-list { display: flex; flex-direction: column; gap: 8px; }
+  .notif-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .notif-item .type-ic {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--accent-dim); color: var(--accent);
+    display: grid; place-items: center; font-weight: 700; flex-shrink: 0;
+  }
+  .notif-item .body { flex: 1; min-width: 0; }
+  .notif-item .title { font-weight: 600; font-size: 14px; }
+  .notif-item .meta { color: var(--text2); font-size: 12px; margin-top: 2px; }
+
+  /* Settings */
+  .conn-status {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px; border-radius: var(--radius);
+    background: var(--surface2); border: 1px solid var(--border);
+  }
+  .conn-status .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+  .conn-status.connected .dot { background: var(--success); }
+
+  .input-group { display: flex; gap: 6px; align-items: stretch; }
+  .input-group input { flex: 1; }
+
+  /* Bottom nav (mobile) */
+  #bottom-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    height: var(--bottom-nav-h);
+    padding: 6px env(safe-area-inset-right) calc(6px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+    z-index: 50;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #bottom-nav::-webkit-scrollbar { display: none; }
+  #bottom-nav .row { display: flex; min-width: 100%; height: 100%; }
+  #bottom-nav .nav-btn {
+    flex: 1; min-width: 70px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; color: var(--text2); cursor: pointer; user-select: none;
+    font-size: 10px; font-weight: 600;
+    border-radius: 8px;
+    transition: color 120ms ease;
+  }
+  #bottom-nav .nav-btn .ic { width: 20px; height: 20px; }
+  #bottom-nav .nav-btn.active { color: var(--accent); }
+  #bottom-nav .nav-btn .badge {
+    position: absolute; transform: translate(12px, -10px);
+    background: var(--danger); color: white; font-size: 9px; font-weight: 700;
+    padding: 1px 5px; border-radius: 10px;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .editor-wrap { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
+    #sidebar { display: none; }
+    #bottom-nav { display: block; }
+    #main-content {
+      padding: 16px;
+      padding-bottom: calc(var(--bottom-nav-h) + 16px + env(safe-area-inset-bottom));
+    }
+    .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    .page-head h1 { font-size: 20px; }
+    .modal { max-width: 100%; }
+  }
+
+  /* Utilities */
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .gap-sm { gap: 6px; }
+  .mt-0 { margin-top: 0; } .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 14px; }
+  .text-muted { color: var(--text2); }
+  .text-mono { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+  .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hidden { display: none !important; }
+  .copy-btn { background: transparent; border: 1px solid var(--border2); padding: 3px 7px; font-size: 11px; }
+
+  /* Dropdown menu */
+  .menu-wrap { position: relative; }
+  .menu {
+    position: absolute; right: 0; top: calc(100% + 4px);
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); box-shadow: var(--shadow);
+    min-width: 160px; z-index: 100; padding: 4px; display: none;
+  }
+  .menu.open { display: block; }
+  .menu-item { padding: 8px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  .menu-item:hover { background: var(--surface3); }
+  .menu-item.danger { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<div id="app-wrapper">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo">G</div>
+      <div>GitHub Manager</div>
+    </div>
+    <div class="nav-item" data-route="dashboard"><span class="ic">📊</span><span>Dashboard</span></div>
+    <div class="nav-item" data-route="repos"><span class="ic">📦</span><span>Repositories</span></div>
+    <div class="nav-item" data-route="explorer"><span class="ic">📁</span><span>File Explorer</span></div>
+    <div class="nav-item" data-route="commits"><span class="ic">📝</span><span>Commits</span></div>
+    <div class="nav-item" data-route="search"><span class="ic">🔎</span><span>Search</span></div>
+    <div class="nav-item" data-route="notifications"><span class="ic">🔔</span><span>Notifications</span><span class="badge hidden" id="nav-notif-badge">0</span></div>
+    <div class="nav-item" data-route="gists"><span class="ic">📜</span><span>Gists</span></div>
+    <div style="flex:1"></div>
+    <div class="nav-item" data-route="settings"><span class="ic">⚙️</span><span>Settings</span></div>
+  </aside>
+
+  <main id="main-content"></main>
+</div>
+
+<nav id="bottom-nav">
+  <div class="row">
+    <div class="nav-btn" data-route="dashboard"><span class="ic">📊</span><span>Home</span></div>
+    <div class="nav-btn" data-route="repos"><span class="ic">📦</span><span>Repos</span></div>
+    <div class="nav-btn" data-route="explorer"><span class="ic">📁</span><span>Files</span></div>
+    <div class="nav-btn" data-route="commits"><span class="ic">📝</span><span>Commits</span></div>
+    <div class="nav-btn" data-route="search"><span class="ic">🔎</span><span>Search</span></div>
+    <div class="nav-btn" data-route="notifications"><span class="ic">🔔</span><span>Notif</span><span class="badge hidden" id="bn-notif-badge">0</span></div>
+    <div class="nav-btn" data-route="gists"><span class="ic">📜</span><span>Gists</span></div>
+    <div class="nav-btn" data-route="settings"><span class="ic">⚙️</span><span>Settings</span></div>
+  </div>
+</nav>
+
+<div id="toast-container"></div>
+<div id="modal-container"></div>
+
+<script>
+'use strict';
+
+/* =========================================================================
+ * GitHub Manager — single-file vanilla JS app
+ * Sections:
+ *   1. Constants & state
+ *   2. localStorage helpers
+ *   3. Utility helpers (escape, debounce, format)
+ *   4. Toast / modal / skeleton
+ *   5. ghFetch (API helper, rate limit handling)
+ *   6. Router & navigation
+ *   7. Module 1: Dashboard
+ *   8. Module 2: Repositories
+ *   9. Module 3: File Explorer + Editor
+ *  10. Module 4: Commits
+ *  11. Module 5: Search
+ *  12. Module 6: Notifications
+ *  13. Module 7: Gists
+ *  14. Module 8: Settings
+ *  15. Init
+ * ======================================================================= */
+
+/* ---------- 1. Constants & state ---------- */
+const API_BASE = 'https://api.github.com';
+const ROUTES = ['dashboard', 'repos', 'explorer', 'commits', 'search', 'notifications', 'gists', 'settings'];
+const LS = {
+  pat: 'gh_pat',
+  user: 'gh_user',
+  page: 'gh_active_page',
+  repo: 'gh_active_repo',
+  branch: 'gh_active_branch',
+  path: 'gh_explorer_path',
+};
+const state = {
+  user: null,
+  rateRemaining: null,
+  rateLimit: null,
+  rateReset: null,
+  notifBadge: 0,
+};
+
+/* ---------- 2. localStorage helpers ---------- */
+const ls = {
+  get(k, fallback = null) {
+    try { const v = localStorage.getItem(k); return v == null ? fallback : v; }
+    catch { return fallback; }
+  },
+  getJSON(k, fallback = null) {
+    try { const v = localStorage.getItem(k); return v == null ? fallback : JSON.parse(v); }
+    catch { return fallback; }
+  },
+  set(k, v) {
+    try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch {}
+  },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+/* ---------- 3. Utility helpers ---------- */
+function $(sel, root = document) { return root.querySelector(sel); }
+function $$(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escapeAttr(s) { return escapeHtml(s); }
+function debounce(fn, ms = 300) {
+  let t; return function (...args) {
+    clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
+function relativeTime(iso) {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return iso;
+  const diff = Math.floor((Date.now() - then) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 31536000) return `${Math.floor(diff / 2592000)}mo ago`;
+  return `${Math.floor(diff / 31536000)}y ago`;
+}
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso); if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function formatNum(n) {
+  if (n == null) return '0';
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000)    return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    showToast('Copied to clipboard', 'success');
+  } catch { showToast('Failed to copy', 'error'); }
+}
+function bytesToBase64(bytes) {
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+function strToBase64(s) {
+  return bytesToBase64(new TextEncoder().encode(s));
+}
+function base64ToStr(b64) {
+  try {
+    const bin = atob(b64.replace(/\s/g, ''));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  } catch { return ''; }
+}
+function isProbablyText(filename) {
+  if (!filename) return true;
+  const ext = filename.split('.').pop().toLowerCase();
+  const bin = ['png','jpg','jpeg','gif','webp','ico','pdf','zip','tar','gz','7z','rar','exe','dll','so','dylib','class','jar','wasm','mp3','mp4','mov','avi','wav','ogg','flac','svg'];
+  return !bin.includes(ext);
+}
+function langFromExt(filename) {
+  if (!filename) return 'plaintext';
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  const map = {
+    js:'javascript', mjs:'javascript', cjs:'javascript', jsx:'javascript',
+    ts:'typescript', tsx:'typescript',
+    py:'python', rb:'ruby', php:'php', go:'go', rs:'rust',
+    java:'java', kt:'kotlin', swift:'swift', c:'c', h:'c',
+    cpp:'cpp', cc:'cpp', cxx:'cpp', hpp:'cpp',
+    cs:'csharp', md:'markdown', html:'xml', xml:'xml', json:'json',
+    yml:'yaml', yaml:'yaml', toml:'ini', ini:'ini',
+    sh:'bash', bash:'bash', zsh:'bash',
+    css:'css', scss:'scss', sass:'scss',
+    sql:'sql', dockerfile:'dockerfile', graphql:'graphql', gql:'graphql',
+  };
+  return map[ext] || 'plaintext';
+}
+
+/* ---------- 4. Toast / Modal / Skeleton ---------- */
+function showToast(message, type = 'info', ms = 3000) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${escapeHtml(message)}</span>`;
+  $('#toast-container').appendChild(el);
+  setTimeout(() => {
+    el.classList.add('removing');
+    setTimeout(() => el.remove(), 200);
+  }, ms);
+}
+
+function showModal({ title = '', body = '', confirmText = 'Confirm', cancelText = 'Cancel', danger = false, onConfirm, html = false }) {
+  return new Promise((resolve) => {
+    const c = $('#modal-container');
+    c.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <h3>${escapeHtml(title)}</h3>
+        <div class="body">${html ? body : escapeHtml(body)}</div>
+        <div class="actions">
+          <button type="button" class="btn-ghost" data-act="cancel">${escapeHtml(cancelText)}</button>
+          <button type="button" class="${danger ? 'btn-danger' : 'btn-primary'}" data-act="confirm">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>`;
+    c.classList.add('active');
+    const close = (val) => {
+      c.classList.remove('active'); c.innerHTML = '';
+      resolve(val);
+    };
+    $('.modal [data-act="cancel"]', c).onclick = () => close(false);
+    $('.modal [data-act="confirm"]', c).onclick = async () => {
+      if (onConfirm) {
+        try { const r = await onConfirm(c); if (r === false) return; }
+        catch (e) { showToast(e.message || 'Action failed', 'error'); return; }
+      }
+      close(true);
+    };
+    c.onclick = (e) => { if (e.target === c) close(false); };
+  });
+}
+
+function showFormModal({ title = '', html = '', confirmText = 'Save', cancelText = 'Cancel', danger = false, onSubmit }) {
+  return new Promise((resolve) => {
+    const c = $('#modal-container');
+    c.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <h3>${escapeHtml(title)}</h3>
+        <form class="modal-form">${html}
+          <div class="actions">
+            <button type="button" class="btn-ghost" data-act="cancel">${escapeHtml(cancelText)}</button>
+            <button type="submit" class="${danger ? 'btn-danger' : 'btn-primary'}">${escapeHtml(confirmText)}</button>
+          </div>
+        </form>
+      </div>`;
+    c.classList.add('active');
+    const close = (val) => { c.classList.remove('active'); c.innerHTML = ''; resolve(val); };
+    $('.modal [data-act="cancel"]', c).onclick = () => close(null);
+    c.onclick = (e) => { if (e.target === c) close(null); };
+    const form = $('.modal-form', c);
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const data = {};
+      $$('input,select,textarea', form).forEach(i => {
+        if (i.type === 'checkbox') data[i.name] = i.checked;
+        else if (i.name) data[i.name] = i.value;
+      });
+      try {
+        const r = onSubmit ? await onSubmit(data, form) : true;
+        if (r === false) return;
+        close(data);
+      } catch (err) { showToast(err.message || 'Action failed', 'error'); }
+    };
+    setTimeout(() => { const f = $('input,textarea,select', form); if (f) f.focus(); }, 50);
+  });
+}
+
+function skeletonLines(n = 4) {
+  return Array.from({ length: n }).map(() => '<div class="skeleton sk-row"></div>').join('');
+}
+function skeletonCards(n = 3) {
+  return Array.from({ length: n }).map(() => '<div class="skeleton sk-card"></div>').join('');
+}
+
+/* ---------- 5. ghFetch (API helper) ---------- */
+async function ghFetch(endpoint, options = {}) {
+  const pat = ls.get(LS.pat);
+  if (!pat && endpoint !== '/_no_auth') {
+    throw new Error('No PAT configured. Open Settings to add one.');
+  }
+  const url = endpoint.startsWith('http') ? endpoint : API_BASE + endpoint;
+  const headers = {
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    ...(options.headers || {}),
+  };
+  if (pat) headers['Authorization'] = `Bearer ${pat}`;
+  if (options.body && typeof options.body !== 'string' && !(options.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+    options = { ...options, body: JSON.stringify(options.body) };
+  }
+  const res = await fetch(url, { ...options, headers });
+  const rem = res.headers.get('X-RateLimit-Remaining');
+  const lim = res.headers.get('X-RateLimit-Limit');
+  const rst = res.headers.get('X-RateLimit-Reset');
+  if (rem != null) state.rateRemaining = parseInt(rem, 10);
+  if (lim != null) state.rateLimit = parseInt(lim, 10);
+  if (rst != null) state.rateReset = parseInt(rst, 10) * 1000;
+  if (state.rateRemaining != null && state.rateRemaining > 0 && state.rateRemaining < 10) {
+    showToast(`Rate limit getting low: ${state.rateRemaining} requests left`, 'warning');
+  }
+  if (res.status === 204) return null;
+  if (res.status === 304) return null;
+  let data = null;
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) {
+    try { data = await res.json(); } catch { data = null; }
+  } else {
+    try { data = await res.text(); } catch { data = null; }
+  }
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Unauthorized — your PAT is invalid or expired.');
+    if (res.status === 403 && state.rateRemaining === 0) {
+      const reset = state.rateReset ? new Date(state.rateReset).toLocaleTimeString() : 'soon';
+      throw new Error(`Rate limit exceeded. Resets at ${reset}.`);
+    }
+    if (res.status === 429) throw new Error('Too many requests — please slow down.');
+    const msg = (data && data.message) ? data.message : `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/* ---------- 6. Router & navigation ---------- */
+let currentRoute = null;
+let routeArgs = '';
+
+function parseHash() {
+  const h = (location.hash || '').replace(/^#/, '');
+  const [r, ...rest] = h.split('/');
+  return { route: r || '', rest: rest.join('/') };
+}
+
+function setRoute(route, args = '') {
+  const target = '#' + route + (args ? '/' + args : '');
+  if (location.hash !== target) location.hash = target;
+  else renderRoute();
+}
+
+function renderRoute() {
+  const { route, rest } = parseHash();
+  let r = ROUTES.includes(route) ? route : 'dashboard';
+  const pat = ls.get(LS.pat);
+  if (!pat && r !== 'settings') r = 'settings';
+  currentRoute = r; routeArgs = rest;
+  ls.set(LS.page, r);
+
+  $$('#sidebar .nav-item, #bottom-nav .nav-btn').forEach(el => {
+    el.classList.toggle('active', el.dataset.route === r);
+  });
+
+  const main = $('#main-content');
+  main.scrollTop = 0;
+  switch (r) {
+    case 'dashboard':     return renderDashboard(main);
+    case 'repos':         return renderRepos(main);
+    case 'explorer':      return renderExplorer(main, rest);
+    case 'commits':       return renderCommits(main, rest);
+    case 'search':        return renderSearch(main);
+    case 'notifications': return renderNotifications(main);
+    case 'gists':         return renderGists(main);
+    case 'settings':      return renderSettings(main);
+  }
+}
+
+function bindNav() {
+  $$('#sidebar .nav-item, #bottom-nav .nav-btn').forEach(el => {
+    el.addEventListener('click', () => setRoute(el.dataset.route));
+  });
+  window.addEventListener('hashchange', renderRoute);
+}
+
+/* ---------- 7. Module 1: Dashboard ---------- */
+async function renderDashboard(root) {
+  root.innerHTML = `
+    <div class="page-head">
+      <div>
+        <h1>Dashboard</h1>
+        <div class="sub">Profile, stats, and recent activity</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn-ghost" id="refresh-dash">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="card profile-card" id="profile-card">${skeletonLines(3)}</div>
+    <div class="grid grid-3 mt-3">
+      <div class="card stat-card"><div class="label">Public repos</div><div class="value" id="stat-repos">—</div></div>
+      <div class="card stat-card"><div class="label">Total stars</div><div class="value" id="stat-stars">—</div></div>
+      <div class="card stat-card"><div class="label">Total forks</div><div class="value" id="stat-forks">—</div></div>
+    </div>
+    <div class="grid grid-2 mt-3">
+      <div class="card">
+        <div class="row between"><h3 style="margin:0;font-size:15px">Top repos by stars</h3><span class="text-muted text-mono" style="font-size:11px" id="chart-info">—</span></div>
+        <div style="height:240px;margin-top:10px"><canvas id="dash-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="row between"><h3 style="margin:0;font-size:15px">Recently updated</h3>
+          <a href="#repos" class="text-muted" style="font-size:12px">View all →</a></div>
+        <div id="recent-repos" class="mt-2">${skeletonLines(5)}</div>
+      </div>
+    </div>
+  `;
+  $('#refresh-dash').onclick = () => renderDashboard(root);
+
+  try {
+    const [user, repos, notifs] = await Promise.all([
+      ghFetch('/user'),
+      ghFetch('/user/repos?per_page=100&sort=updated&affiliation=owner'),
+      ghFetch('/notifications?all=false').catch(() => []),
+    ]);
+    state.user = user;
+    ls.set(LS.user, user);
+    updateNotifBadge(Array.isArray(notifs) ? notifs.length : 0);
+
+    $('#profile-card').innerHTML = `
+      <img class="avatar" src="${escapeAttr(user.avatar_url)}" alt="avatar" />
+      <div class="info">
+        <h2>${escapeHtml(user.name || user.login)}</h2>
+        <p>@${escapeHtml(user.login)}${user.bio ? ' · ' + escapeHtml(user.bio) : ''}</p>
+        <div class="meta">
+          ${user.location ? `<span>📍 ${escapeHtml(user.location)}</span>` : ''}
+          <span>👥 ${formatNum(user.followers)} followers · ${formatNum(user.following)} following</span>
+          <span>📦 ${formatNum(user.public_repos)} repos · 📜 ${formatNum(user.public_gists)} gists</span>
+        </div>
+      </div>
+    `;
+
+    const totalStars = repos.reduce((a, r) => a + (r.stargazers_count || 0), 0);
+    const totalForks = repos.reduce((a, r) => a + (r.forks_count || 0), 0);
+    $('#stat-repos').textContent = formatNum(user.public_repos);
+    $('#stat-stars').textContent = formatNum(totalStars);
+    $('#stat-forks').textContent = formatNum(totalForks);
+
+    const top = [...repos].sort((a, b) => b.stargazers_count - a.stargazers_count).slice(0, 5);
+    $('#chart-info').textContent = top.length ? `${top.length} repos` : '';
+    if (top.length && typeof Chart !== 'undefined') {
+      const ctx = $('#dash-chart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: top.map(r => r.name),
+          datasets: [{
+            label: 'Stars',
+            data: top.map(r => r.stargazers_count),
+            backgroundColor: '#a855f7',
+            borderRadius: 6,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#b0b0b8' }, grid: { display: false } },
+            y: { ticks: { color: '#b0b0b8' }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true },
+          },
+        },
+      });
+    }
+
+    const recent = repos.slice(0, 5);
+    $('#recent-repos').innerHTML = recent.length ? recent.map(r => `
+      <div class="row between" style="padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="min-width:0">
+          <a href="#explorer/${escapeAttr(r.owner.login)}/${escapeAttr(r.name)}" style="font-weight:600">${escapeHtml(r.name)}</a>
+          <div class="text-muted" style="font-size:12px">${r.private ? '<span class="pill private">Private</span> ' : '<span class="pill public">Public</span> '}${escapeHtml(r.language || '—')} · ${relativeTime(r.pushed_at)}</div>
+        </div>
+        <div class="text-muted" style="font-size:12px">⭐ ${formatNum(r.stargazers_count)}</div>
+      </div>
+    `).join('') : '<div class="empty">No repos found.</div>';
+  } catch (e) {
+    showToast(e.message, 'error');
+    $('#profile-card').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+/* ---------- 8. Module 2: Repositories ---------- */
+const reposCache = { items: null };
+async function renderRepos(root) {
+  root.innerHTML = `
+    <div class="page-head">
+      <div><h1>Repositories</h1><div class="sub">Manage your repos</div></div>
+      <div class="page-actions">
+        <button class="btn-ghost" id="repos-refresh">↻ Refresh</button>
+        <button class="btn-primary" id="btn-new-repo">+ New repo</button>
+      </div>
+    </div>
+    <div class="toolbar card" style="padding:12px">
+      <input class="search" id="repo-search" placeholder="Search repos by name or description…" />
+      <select id="repo-vis"><option value="all">All visibility</option><option value="public">Public</option><option value="private">Private</option></select>
+      <select id="repo-lang"><option value="all">All languages</option></select>
+      <select id="repo-sort">
+        <option value="updated">Recently updated</option>
+        <option value="name">Name A–Z</option>
+        <option value="stars">Most stars</option>
+      </select>
+      <button class="btn-ghost" id="btn-fork">Fork external…</button>
+    </div>
+    <div id="repos-list" class="repo-list mt-3">${skeletonCards(4)}</div>
+  `;
+  $('#btn-new-repo').onclick = newRepoModal;
+  $('#repos-refresh').onclick = () => loadRepos(true);
+  $('#btn-fork').onclick = forkRepoModal;
+  ['#repo-search','#repo-vis','#repo-lang','#repo-sort'].forEach(s => {
+    const el = $(s);
+    el.addEventListener(s === '#repo-search' ? 'input' : 'change', debounce(renderReposList, 150));
+  });
+  await loadRepos(false);
+}
+
+async function loadRepos(force = false) {
+  try {
+    if (force || !reposCache.items) {
+      const items = await ghFetch('/user/repos?per_page=100&sort=updated&affiliation=owner');
+      reposCache.items = items || [];
+    }
+    const langSel = $('#repo-lang');
+    if (langSel) {
+      const langs = Array.from(new Set(reposCache.items.map(r => r.language).filter(Boolean))).sort();
+      const cur = langSel.value;
+      langSel.innerHTML = '<option value="all">All languages</option>' + langs.map(l => `<option value="${escapeAttr(l)}">${escapeHtml(l)}</option>`).join('');
+      if (cur && langs.includes(cur)) langSel.value = cur;
+    }
+    renderReposList();
+  } catch (e) {
+    showToast(e.message, 'error');
+    $('#repos-list').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderReposList() {
+  const items = reposCache.items || [];
+  const q = ($('#repo-search')?.value || '').toLowerCase().trim();
+  const vis = $('#repo-vis')?.value || 'all';
+  const lang = $('#repo-lang')?.value || 'all';
+  const sort = $('#repo-sort')?.value || 'updated';
+  let list = items.filter(r => {
+    if (q && !((r.name + ' ' + (r.description || '')).toLowerCase().includes(q))) return false;
+    if (vis === 'public' && r.private) return false;
+    if (vis === 'private' && !r.private) return false;
+    if (lang !== 'all' && r.language !== lang) return false;
+    return true;
+  });
+  if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
+  else if (sort === 'stars') list.sort((a, b) => b.stargazers_count - a.stargazers_count);
+  else list.sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at));
+
+  const root = $('#repos-list');
+  if (!list.length) { root.innerHTML = '<div class="empty"><h3>No repos match</h3>Try adjusting filters.</div>'; return; }
+  root.innerHTML = list.map(r => `
+    <div class="repo-item" data-full="${escapeAttr(r.full_name)}">
+      <div class="row1">
+        <a href="#explorer/${escapeAttr(r.owner.login)}/${escapeAttr(r.name)}" class="name truncate">${escapeHtml(r.name)}</a>
+        <span class="pill ${r.private ? 'private' : 'public'}">${r.private ? 'Private' : 'Public'}</span>
+        ${r.fork ? '<span class="pill">Fork</span>' : ''}
+        ${r.archived ? '<span class="pill">Archived</span>' : ''}
+        <div class="actions">
+          <button class="btn-ghost btn-sm" data-act="commits">Commits</button>
+          <button class="btn-ghost btn-sm" data-act="rename">Rename</button>
+          <button class="btn-ghost btn-sm" data-act="delete" style="color:var(--danger)">Delete</button>
+        </div>
+      </div>
+      ${r.description ? `<div class="desc">${escapeHtml(r.description)}</div>` : ''}
+      <div class="meta">
+        ${r.language ? `<span><i class="lang-dot"></i> ${escapeHtml(r.language)}</span>` : ''}
+        <span>⭐ ${formatNum(r.stargazers_count)}</span>
+        <span>🍴 ${formatNum(r.forks_count)}</span>
+        <span>Updated ${relativeTime(r.pushed_at)}</span>
+      </div>
+    </div>`).join('');
+
+  $$('#repos-list .repo-item').forEach(card => {
+    const full = card.dataset.full;
+    $$('button[data-act]', card).forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation(); e.preventDefault();
+        const repo = items.find(r => r.full_name === full);
+        if (!repo) return;
+        const act = btn.dataset.act;
+        if (act === 'commits') setRoute('commits', `${repo.owner.login}/${repo.name}`);
+        else if (act === 'rename') renameRepoModal(repo);
+        else if (act === 'delete') deleteRepoModal(repo);
+      };
+    });
+  });
+}
+
+async function newRepoModal() {
+  await showFormModal({
+    title: 'Create new repository',
+    confirmText: 'Create',
+    html: `
+      <div class="form-row"><label>Repository name</label>
+        <input name="name" required placeholder="my-awesome-project" pattern="[A-Za-z0-9._-]+" /></div>
+      <div class="form-row"><label>Description</label>
+        <textarea name="description" placeholder="Optional"></textarea></div>
+      <div class="form-row row"><label style="margin:0;display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px">
+        <input type="checkbox" name="private" style="width:auto"> Private repository</label></div>
+      <div class="form-row row"><label style="margin:0;display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px">
+        <input type="checkbox" name="auto_init" checked style="width:auto"> Initialize with README</label></div>
+    `,
+    onSubmit: async (data) => {
+      await ghFetch('/user/repos', {
+        method: 'POST',
+        body: { name: data.name, description: data.description || '', private: !!data.private, auto_init: !!data.auto_init },
+      });
+      showToast(`Created "${data.name}"`, 'success');
+      reposCache.items = null;
+      await loadRepos(true);
+    },
+  });
+}
+
+async function renameRepoModal(repo) {
+  await showFormModal({
+    title: `Rename ${repo.name}`,
+    confirmText: 'Rename',
+    html: `
+      <div class="form-row"><label>New name</label>
+        <input name="name" required value="${escapeAttr(repo.name)}" pattern="[A-Za-z0-9._-]+" /></div>`,
+    onSubmit: async (data) => {
+      if (data.name === repo.name) return;
+      await ghFetch(`/repos/${repo.owner.login}/${repo.name}`, { method: 'PATCH', body: { name: data.name } });
+      showToast('Renamed', 'success');
+      reposCache.items = null;
+      await loadRepos(true);
+    },
+  });
+}
+
+async function deleteRepoModal(repo) {
+  await showFormModal({
+    title: `Delete ${repo.full_name}`,
+    confirmText: 'Delete repository',
+    danger: true,
+    html: `
+      <div style="color:var(--text2);font-size:13px;margin-bottom:14px">
+        This is <strong style="color:var(--danger)">irreversible</strong>. Type <strong>${escapeHtml(repo.name)}</strong> to confirm.
+      </div>
+      <div class="form-row"><input name="confirmName" autocomplete="off" placeholder="${escapeAttr(repo.name)}" required /></div>`,
+    onSubmit: async (data) => {
+      if (data.confirmName !== repo.name) {
+        showToast('Repo name does not match', 'error');
+        return false;
+      }
+      await ghFetch(`/repos/${repo.owner.login}/${repo.name}`, { method: 'DELETE' });
+      showToast('Repo deleted', 'success');
+      reposCache.items = null;
+      await loadRepos(true);
+    },
+  });
+}
+
+async function forkRepoModal() {
+  await showFormModal({
+    title: 'Fork external repository',
+    confirmText: 'Fork',
+    html: `
+      <div class="form-row"><label>Source (owner/repo)</label>
+        <input name="src" required placeholder="torvalds/linux" /></div>`,
+    onSubmit: async (data) => {
+      const m = data.src.match(/^([^/]+)\/([^/]+)$/);
+      if (!m) { showToast('Use format owner/repo', 'error'); return false; }
+      await ghFetch(`/repos/${m[1]}/${m[2]}/forks`, { method: 'POST', body: {} });
+      showToast(`Forking ${data.src}…`, 'success');
+      setTimeout(() => { reposCache.items = null; loadRepos(true); }, 1500);
+    },
+  });
+}
+
+/* ---------- 9. Module 3: File Explorer + Editor ---------- */
+const exState = {
+  owner: null, repo: null, branch: null, path: '',
+  branches: [], tree: [],
+  file: null, fileSha: null, fileText: '', editing: false,
+  findQuery: '', findMatches: [], findIdx: 0,
+};
+
+async function renderExplorer(root, rest) {
+  let owner = null, repo = null, branch = null, path = '';
+  if (rest) {
+    const parts = rest.split('/');
+    owner = parts[0] || null;
+    repo  = parts[1] || null;
+    branch = parts[2] || null;
+    path  = parts.slice(3).join('/') || '';
+  }
+  if (!owner || !repo) {
+    const last = ls.getJSON(LS.repo);
+    if (last && last.owner && last.repo) { owner = last.owner; repo = last.repo; branch = last.branch || branch; path = ls.get(LS.path, '') || ''; }
+  }
+  exState.owner = owner; exState.repo = repo; exState.branch = branch || null; exState.path = path;
+  exState.file = null; exState.fileSha = null; exState.fileText = ''; exState.editing = false;
+
+  root.innerHTML = `
+    <div class="page-head">
+      <div><h1>File Explorer</h1><div class="sub">Browse and edit repo contents</div></div>
+      <div class="page-actions">
+        <select id="ex-repo" style="min-width:220px"><option value="">Loading repos…</option></select>
+        <select id="ex-branch" style="min-width:160px"><option value="">Branch…</option></select>
+      </div>
+    </div>
+    <div class="editor-wrap" id="editor-wrap">
+      <div class="file-tree">
+        <div class="head">
+          <div class="row gap-sm">
+            <button class="btn-sm" id="btn-up" title="Up one level">↑</button>
+            <div class="breadcrumb" id="breadcrumb" style="flex:1;padding:0"></div>
+          </div>
+          <div class="row gap-sm">
+            <button class="btn-sm" id="btn-upload">⬆ Upload</button>
+            <button class="btn-sm" id="btn-zip">📦 ZIP</button>
+            <button class="btn-sm" id="btn-newfile">+ File</button>
+          </div>
+          <div id="upload-progress" class="hidden">
+            <div class="progress-bar"><div></div></div>
+            <div class="text-muted" style="font-size:11px;margin-top:4px" id="upload-info"></div>
+          </div>
+        </div>
+        <div class="body" id="tree-body">${skeletonLines(6)}</div>
+      </div>
+      <div class="editor" id="editor-panel">
+        <div class="empty"><h3>No file selected</h3>Pick a file from the tree to view or edit it.</div>
+      </div>
+    </div>
+  `;
+
+  try {
+    const repos = reposCache.items || (reposCache.items = await ghFetch('/user/repos?per_page=100&sort=updated&affiliation=owner'));
+    const sel = $('#ex-repo');
+    sel.innerHTML = '<option value="">Select repo…</option>' + repos.map(r => `<option value="${escapeAttr(r.owner.login + '/' + r.name)}">${escapeHtml(r.full_name)}</option>`).join('');
+    if (owner && repo) sel.value = `${owner}/${repo}`;
+    sel.onchange = () => {
+      const v = sel.value; if (!v) return;
+      const [o, n] = v.split('/');
+      ls.set(LS.repo, { owner: o, repo: n });
+      ls.set(LS.path, '');
+      setRoute('explorer', `${o}/${n}`);
+    };
+  } catch (e) { showToast(e.message, 'error'); }
+
+  $('#btn-up').onclick = () => {
+    if (!exState.path) return;
+    const parts = exState.path.split('/'); parts.pop();
+    navigateExplorer(parts.join('/'));
+  };
+  $('#btn-upload').onclick = uploadFileFlow;
+  $('#btn-zip').onclick = uploadZipFlow;
+  $('#btn-newfile').onclick = newFileFlow;
+
+  if (!owner || !repo) {
+    $('#tree-body').innerHTML = '<div class="empty"><h3>Pick a repo</h3>Choose a repository from the dropdown above.</div>';
+    return;
+  }
+
+  try {
+    const branches = await ghFetch(`/repos/${owner}/${repo}/branches?per_page=100`);
+    exState.branches = branches || [];
+    const sel = $('#ex-branch');
+    sel.innerHTML = exState.branches.map(b => `<option value="${escapeAttr(b.name)}">${escapeHtml(b.name)}</option>`).join('');
+    if (!exState.branch || !exState.branches.find(b => b.name === exState.branch)) {
+      const meta = await ghFetch(`/repos/${owner}/${repo}`);
+      exState.branch = meta.default_branch;
+    }
+    sel.value = exState.branch;
+    sel.onchange = () => {
+      exState.branch = sel.value;
+      ls.set(LS.branch, exState.branch);
+      navigateExplorer(exState.path);
+    };
+    ls.set(LS.repo, { owner, repo, branch: exState.branch });
+    await loadTree();
+  } catch (e) {
+    showToast(e.message, 'error');
+    $('#tree-body').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function navigateExplorer(path) {
+  exState.path = path; ls.set(LS.path, path);
+  setRoute('explorer', `${exState.owner}/${exState.repo}/${exState.branch}/${path}`);
+}
+
+async function loadTree() {
+  const { owner, repo, branch, path } = exState;
+  const bc = $('#breadcrumb');
+  bc.innerHTML = (() => {
+    const segs = path ? path.split('/') : [];
+    let html = `<span data-path="">${escapeHtml(repo)}</span>`;
+    let cur = '';
+    segs.forEach((s) => {
+      cur = cur ? cur + '/' + s : s;
+      html += `<span class="sep">/</span><span data-path="${escapeAttr(cur)}">${escapeHtml(s)}</span>`;
+    });
+    return html;
+  })();
+  $$('#breadcrumb span[data-path]').forEach(s => {
+    s.onclick = () => navigateExplorer(s.dataset.path);
+  });
+
+  $('#tree-body').innerHTML = skeletonLines(8);
+  try {
+    const data = await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(path)}?ref=${encodeURIComponent(branch)}`);
+    const items = Array.isArray(data) ? data : [data];
+    exState.tree = items;
+    items.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    $('#tree-body').innerHTML = items.map(it => `
+      <div class="tree-item" data-name="${escapeAttr(it.name)}" data-type="${escapeAttr(it.type)}" data-path="${escapeAttr(it.path)}" data-sha="${escapeAttr(it.sha)}">
+        <span class="ic">${it.type === 'dir' ? '📁' : '📄'}</span>
+        <span class="truncate" style="flex:1">${escapeHtml(it.name)}</span>
+        <button class="btn-ghost btn-icon" data-act="del" title="Delete">🗑️</button>
+      </div>
+    `).join('') || '<div class="empty">Empty folder.</div>';
+
+    $$('#tree-body .tree-item').forEach(el => {
+      el.onclick = (e) => {
+        if (e.target.closest('[data-act]')) return;
+        const type = el.dataset.type, p = el.dataset.path;
+        if (type === 'dir') navigateExplorer(p);
+        else openFile(p, el.dataset.sha, el.dataset.name);
+      };
+      const del = el.querySelector('[data-act="del"]');
+      if (del) del.onclick = (e) => {
+        e.stopPropagation();
+        deleteContentFlow(el.dataset.path, el.dataset.sha, el.dataset.type === 'dir');
+      };
+    });
+  } catch (e) {
+    showToast(e.message, 'error');
+    $('#tree-body').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function openFile(path, sha, name) {
+  const { owner, repo, branch } = exState;
+  const panel = $('#editor-panel');
+  panel.innerHTML = `<div class="head"><div class="filename">${escapeHtml(path)}</div></div><div class="body" style="padding:18px">${skeletonLines(10)}</div>`;
+  try {
+    const data = await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(path)}?ref=${encodeURIComponent(branch)}`);
+    if (!isProbablyText(name)) {
+      panel.innerHTML = `
+        <div class="head"><div class="filename">${escapeHtml(path)}</div>
+          <button class="btn-sm" id="btn-dl">⬇ Download</button></div>
+        <div class="body" style="padding:18px"><div class="empty"><h3>Binary file</h3>${formatNum(data.size)} bytes — preview unavailable.</div></div>`;
+      $('#btn-dl').onclick = () => window.open(data.download_url, '_blank');
+      return;
+    }
+    const text = base64ToStr(data.content || '');
+    exState.file = path; exState.fileSha = data.sha; exState.fileText = text; exState.editing = false;
+    exState.findQuery = ''; exState.findMatches = []; exState.findIdx = 0;
+    renderEditor();
+  } catch (e) { showToast(e.message, 'error'); panel.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`; }
+}
+
+function renderEditor() {
+  const panel = $('#editor-panel');
+  const path = exState.file;
+  const lang = langFromExt(path);
+  panel.innerHTML = `
+    <div class="head">
+      <div class="filename">${escapeHtml(path)} <span class="pill" style="margin-left:6px">${escapeHtml(lang)}</span></div>
+      <button class="btn-sm" id="btn-find" title="Find (Ctrl+F)">🔎</button>
+      ${exState.editing
+        ? `<button class="btn-sm" id="btn-cancel">Cancel</button><button class="btn-primary btn-sm" id="btn-save">💾 Save</button>`
+        : `<button class="btn-sm" id="btn-edit">✎ Edit</button>`}
+      <button class="btn-sm" id="btn-delete" style="color:var(--danger)">🗑 Delete</button>
+    </div>
+    <div class="find-bar hidden" id="find-bar">
+      <input id="find-input" placeholder="Find in file…" />
+      <button class="btn-sm" id="find-prev">▲</button>
+      <button class="btn-sm" id="find-next">▼</button>
+      <span class="info" id="find-info">0 of 0</span>
+      <button class="btn-ghost btn-sm" id="find-close">✕</button>
+    </div>
+    <div class="body" id="editor-body"></div>
+  `;
+  $('#btn-find').onclick = toggleFindBar;
+  $('#btn-delete').onclick = () => deleteContentFlow(exState.file, exState.fileSha, false);
+  if (exState.editing) {
+    $('#btn-cancel').onclick = () => { exState.editing = false; renderEditor(); };
+    $('#btn-save').onclick = saveFileFlow;
+  } else {
+    $('#btn-edit').onclick = () => { exState.editing = true; renderEditor(); };
+  }
+  $('#find-close').onclick = toggleFindBar;
+  $('#find-prev').onclick = () => stepFind(-1);
+  $('#find-next').onclick = () => stepFind(1);
+  $('#find-input').addEventListener('input', debounce(updateFind, 120));
+  $('#find-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); stepFind(e.shiftKey ? -1 : 1); }
+    if (e.key === 'Escape') { toggleFindBar(); }
+  });
+
+  const body = $('#editor-body');
+  if (exState.editing) {
+    body.innerHTML = `<textarea class="edit-area" id="edit-area" spellcheck="false"></textarea>`;
+    $('#edit-area').value = exState.fileText;
+  } else {
+    body.innerHTML = renderCodeView(exState.fileText, lang);
+  }
+}
+
+function renderCodeView(text, lang) {
+  const lines = text.split('\n');
+  const gutter = lines.map((_, i) => i + 1).join('\n');
+  let highlighted;
+  try {
+    if (window.hljs) {
+      highlighted = lang && hljs.getLanguage(lang)
+        ? hljs.highlight(text, { language: lang, ignoreIllegals: true }).value
+        : hljs.highlightAuto(text).value;
+    } else {
+      highlighted = escapeHtml(text);
+    }
+  } catch { highlighted = escapeHtml(text); }
+  const htmlLines = highlighted.split('\n').map((l, i) => `<span class="ln" data-ln="${i + 1}">${l || ' '}</span>`).join('\n');
+  return `
+    <div class="code-area">
+      <pre class="gutter">${gutter}</pre>
+      <pre class="code"><code class="hljs language-${escapeAttr(lang)}">${htmlLines}</code></pre>
+    </div>`;
+}
+
+function toggleFindBar() {
+  const bar = $('#find-bar'); if (!bar) return;
+  bar.classList.toggle('hidden');
+  if (!bar.classList.contains('hidden')) {
+    $('#find-input').focus();
+  } else {
+    exState.findQuery = ''; exState.findMatches = []; exState.findIdx = 0;
+  }
+}
+
+function updateFind() {
+  if (exState.editing) return;
+  const q = $('#find-input').value;
+  exState.findQuery = q;
+  const body = $('#editor-body');
+  body.innerHTML = renderCodeView(exState.fileText, langFromExt(exState.file));
+  const info = $('#find-info'); info.textContent = '0 of 0';
+  if (!q) { exState.findMatches = []; return; }
+
+  const root = $('#editor-body .code code');
+  if (!root) return;
+  const lc = q.toLowerCase();
+  const matches = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const nodes = [];
+  let n; while ((n = walker.nextNode())) nodes.push(n);
+  nodes.forEach(node => {
+    const text = node.nodeValue;
+    if (!text) return;
+    const lower = text.toLowerCase();
+    let idx = 0, found, frag = null;
+    while ((found = lower.indexOf(lc, idx)) !== -1) {
+      if (!frag) frag = document.createDocumentFragment();
+      if (found > idx) frag.appendChild(document.createTextNode(text.slice(idx, found)));
+      const mark = document.createElement('mark');
+      mark.className = 'find';
+      mark.textContent = text.slice(found, found + q.length);
+      frag.appendChild(mark);
+      matches.push(mark);
+      idx = found + q.length;
+    }
+    if (frag) {
+      if (idx < text.length) frag.appendChild(document.createTextNode(text.slice(idx)));
+      node.parentNode.replaceChild(frag, node);
+    }
+  });
+  exState.findMatches = matches;
+  exState.findIdx = 0;
+  if (matches.length) { matches[0].classList.add('current'); matches[0].scrollIntoView({ block: 'center' }); }
+  info.textContent = `${matches.length ? 1 : 0} of ${matches.length}`;
+}
+
+function stepFind(delta) {
+  const m = exState.findMatches; if (!m.length) return;
+  if (m[exState.findIdx]) m[exState.findIdx].classList.remove('current');
+  exState.findIdx = (exState.findIdx + delta + m.length) % m.length;
+  m[exState.findIdx].classList.add('current');
+  m[exState.findIdx].scrollIntoView({ block: 'center' });
+  $('#find-info').textContent = `${exState.findIdx + 1} of ${m.length}`;
+}
+
+async function saveFileFlow() {
+  const ta = $('#edit-area'); if (!ta) return;
+  const newText = ta.value;
+  await showFormModal({
+    title: 'Commit changes',
+    confirmText: 'Commit',
+    html: `
+      <div class="form-row"><label>Commit message</label>
+        <input name="message" required value="Update ${escapeAttr(exState.file)}" /></div>
+      <div class="text-muted" style="font-size:12px">Branch: <strong>${escapeHtml(exState.branch)}</strong></div>`,
+    onSubmit: async (data) => {
+      const { owner, repo, branch, file, fileSha } = exState;
+      const r = await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(file)}`, {
+        method: 'PUT',
+        body: { message: data.message, content: strToBase64(newText), sha: fileSha, branch },
+      });
+      exState.fileText = newText;
+      exState.fileSha = r && r.content ? r.content.sha : exState.fileSha;
+      exState.editing = false;
+      showToast('File saved', 'success');
+      renderEditor();
+      loadTree();
+    },
+  });
+}
+
+async function deleteContentFlow(path, sha, isDir) {
+  if (isDir) { showToast('Folder delete is not supported via Contents API.', 'warning'); return; }
+  const ok = await showModal({
+    title: 'Delete file',
+    body: `Delete "${path}"? This cannot be undone.`,
+    confirmText: 'Delete', danger: true,
+  });
+  if (!ok) return;
+  try {
+    const { owner, repo, branch } = exState;
+    await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(path)}`, {
+      method: 'DELETE',
+      body: { message: `Delete ${path}`, sha, branch },
+    });
+    showToast('Deleted', 'success');
+    if (exState.file === path) {
+      exState.file = null; exState.fileSha = null; exState.fileText = '';
+      $('#editor-panel').innerHTML = `<div class="empty"><h3>No file selected</h3></div>`;
+    }
+    loadTree();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function newFileFlow() {
+  await showFormModal({
+    title: 'New file',
+    confirmText: 'Create',
+    html: `
+      <div class="form-row"><label>File name (relative to current folder)</label>
+        <input name="filename" required placeholder="hello.md" /></div>
+      <div class="form-row"><label>Content</label>
+        <textarea name="content" rows="6" placeholder="File contents…"></textarea></div>
+      <div class="form-row"><label>Commit message</label>
+        <input name="message" required value="Add new file" /></div>
+    `,
+    onSubmit: async (data) => {
+      const { owner, repo, branch, path } = exState;
+      const full = path ? `${path}/${data.filename}` : data.filename;
+      await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(full)}`, {
+        method: 'PUT',
+        body: { message: data.message, content: strToBase64(data.content || ''), branch },
+      });
+      showToast('File created', 'success');
+      loadTree();
+    },
+  });
+}
+
+async function uploadFileFlow() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.onchange = async () => {
+    const file = inp.files && inp.files[0]; if (!file) return;
+    try {
+      const ab = await file.arrayBuffer();
+      const b64 = bytesToBase64(new Uint8Array(ab));
+      const { owner, repo, branch, path } = exState;
+      const full = path ? `${path}/${file.name}` : file.name;
+      let sha = null;
+      try {
+        const cur = await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(full)}?ref=${encodeURIComponent(branch)}`);
+        if (cur && !Array.isArray(cur)) sha = cur.sha;
+      } catch {}
+      await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(full)}`, {
+        method: 'PUT',
+        body: { message: `Upload ${file.name}`, content: b64, branch, ...(sha ? { sha } : {}) },
+      });
+      showToast(`Uploaded ${file.name}`, 'success');
+      loadTree();
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+  inp.click();
+}
+
+async function uploadZipFlow() {
+  if (typeof JSZip === 'undefined') { showToast('JSZip not loaded', 'error'); return; }
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.zip,application/zip';
+  inp.onchange = async () => {
+    const file = inp.files && inp.files[0]; if (!file) return;
+    try {
+      const ab = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(ab);
+      const files = [];
+      zip.forEach((rel, entry) => { if (!entry.dir) files.push(entry); });
+      if (!files.length) { showToast('ZIP is empty', 'warning'); return; }
+      if (files.length > 10) {
+        const ok = await showModal({
+          title: 'Lots of files',
+          body: `This ZIP has ${files.length} files. Each one is a separate API call and may hit rate limits. Continue?`,
+          confirmText: 'Upload all', danger: false,
+        });
+        if (!ok) return;
+      }
+      const wrap = $('#upload-progress'); wrap.classList.remove('hidden');
+      const bar = $('#upload-progress .progress-bar > div');
+      const info = $('#upload-info');
+      const { owner, repo, branch, path } = exState;
+      let done = 0;
+      for (const entry of files) {
+        const arr = await entry.async('uint8array');
+        const b64 = bytesToBase64(arr);
+        const full = path ? `${path}/${entry.name}` : entry.name;
+        let sha = null;
+        try {
+          const cur = await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(full)}?ref=${encodeURIComponent(branch)}`);
+          if (cur && !Array.isArray(cur)) sha = cur.sha;
+        } catch {}
+        try {
+          await ghFetch(`/repos/${owner}/${repo}/contents/${encodeURI(full)}`, {
+            method: 'PUT',
+            body: { message: `Upload ${entry.name} (from ZIP)`, content: b64, branch, ...(sha ? { sha } : {}) },
+          });
+        } catch (e) {
+          showToast(`Failed to upload ${entry.name}: ${e.message}`, 'error');
+        }
+        done++;
+        const pct = Math.round((done / files.length) * 100);
+        bar.style.width = pct + '%';
+        info.textContent = `${done} / ${files.length} files (${pct}%)`;
+      }
+      info.textContent += ' — done';
+      showToast('ZIP upload complete', 'success');
+      setTimeout(() => wrap.classList.add('hidden'), 2000);
+      loadTree();
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+  inp.click();
+}
+
+/* ---------- 10. Module 4: Commits ---------- */
+const commitsState = { owner: null, repo: null, page: 1, items: [] };
+
+async function renderCommits(root, rest) {
+  let owner = null, repo = null;
+  if (rest) { const [o, r] = rest.split('/'); owner = o; repo = r; }
+  if (!owner || !repo) {
+    const last = ls.getJSON(LS.repo);
+    if (last && last.owner && last.repo) { owner = last.owner; repo = last.repo; }
+  }
+  commitsState.owner = owner; commitsState.repo = repo; commitsState.page = 1; commitsState.items = [];
+
+  root.innerHTML = `
+    <div class="page-head">
+      <div><h1>Commits</h1><div class="sub">${owner && repo ? escapeHtml(owner + '/' + repo) : 'Pick a repo to view history'}</div></div>
+      <div class="page-actions">
+        <select id="cm-repo" style="min-width:240px"><option value="">Loading repos…</option></select>
+      </div>
+    </div>
+    <div id="commits-list" class="commit-list">${owner && repo ? skeletonCards(5) : '<div class="empty"><h3>No repo selected</h3>Use the dropdown above.</div>'}</div>
+    ${owner && repo ? `<div style="text-align:center;margin-top:14px"><button class="btn-ghost" id="cm-more">Load more</button></div>` : ''}
+  `;
+
+  try {
+    const repos = reposCache.items || (reposCache.items = await ghFetch('/user/repos?per_page=100&sort=updated&affiliation=owner'));
+    const sel = $('#cm-repo');
+    sel.innerHTML = '<option value="">Select repo…</option>' + repos.map(r => `<option value="${escapeAttr(r.owner.login + '/' + r.name)}">${escapeHtml(r.full_name)}</option>`).join('');
+    if (owner && repo) sel.value = `${owner}/${repo}`;
+    sel.onchange = () => {
+      const v = sel.value; if (!v) return;
+      const [o, n] = v.split('/');
+      ls.set(LS.repo, { owner: o, repo: n });
+      setRoute('commits', `${o}/${n}`);
+    };
+  } catch (e) { showToast(e.message, 'error'); }
+
+  if (!owner || !repo) return;
+  const moreBtn = $('#cm-more'); if (moreBtn) moreBtn.onclick = () => loadCommitsPage();
+  await loadCommitsPage();
+}
+
+async function loadCommitsPage() {
+  const { owner, repo, page } = commitsState;
+  const moreBtn = $('#cm-more'); if (moreBtn) { moreBtn.disabled = true; moreBtn.textContent = 'Loading…'; }
+  try {
+    const items = await ghFetch(`/repos/${owner}/${repo}/commits?per_page=30&page=${page}`);
+    commitsState.items = commitsState.items.concat(items || []);
+    commitsState.page = page + 1;
+    renderCommitsList();
+    if (moreBtn) {
+      moreBtn.disabled = false;
+      moreBtn.textContent = (items && items.length === 30) ? 'Load more' : 'No more commits';
+      if (!items || items.length < 30) moreBtn.disabled = true;
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+    if (moreBtn) { moreBtn.disabled = false; moreBtn.textContent = 'Retry'; }
+  }
+}
+
+function renderCommitsList() {
+  const root = $('#commits-list'); if (!root) return;
+  const items = commitsState.items;
+  if (!items.length) { root.innerHTML = '<div class="empty">No commits yet.</div>'; return; }
+  root.innerHTML = items.map(c => {
+    const msg = (c.commit && c.commit.message || '').split('\n')[0];
+    const author = (c.commit && c.commit.author && c.commit.author.name) || (c.author && c.author.login) || 'unknown';
+    const date = c.commit && c.commit.author && c.commit.author.date;
+    return `
+      <div class="commit-item" data-sha="${escapeAttr(c.sha)}">
+        <div class="row between">
+          <div style="min-width:0;flex:1">
+            <div class="msg truncate">${escapeHtml(msg)}</div>
+            <div class="meta">
+              <span>👤 ${escapeHtml(author)}</span>
+              <span>🕒 ${relativeTime(date)}</span>
+              <span class="text-mono">${escapeHtml(c.sha.slice(0, 7))}</span>
+              <button class="copy-btn" data-act="copy">Copy SHA</button>
+            </div>
+          </div>
+        </div>
+        <div class="commit-detail" data-detail></div>
+      </div>`;
+  }).join('');
+  $$('#commits-list .commit-item').forEach(el => {
+    const sha = el.dataset.sha;
+    el.onclick = (e) => {
+      const btn = e.target.closest('[data-act="copy"]');
+      if (btn) { e.stopPropagation(); copyToClipboard(sha); return; }
+      toggleCommitDetail(el, sha);
+    };
+  });
+}
+
+async function toggleCommitDetail(el, sha) {
+  const detail = el.querySelector('[data-detail]');
+  if (el.classList.contains('expanded')) {
+    el.classList.remove('expanded'); return;
+  }
+  el.classList.add('expanded');
+  if (detail.dataset.loaded === '1') return;
+  detail.innerHTML = skeletonLines(4);
+  try {
+    const { owner, repo } = commitsState;
+    const c = await ghFetch(`/repos/${owner}/${repo}/commits/${sha}`);
+    const msg = c.commit && c.commit.message || '';
+    const author = c.commit && c.commit.author || {};
+    const stats = c.stats || { additions: 0, deletions: 0, total: 0 };
+    const files = c.files || [];
+    detail.innerHTML = `
+      <div class="text-mono" style="white-space:pre-wrap;font-size:12px;color:var(--text2);margin-bottom:8px">${escapeHtml(msg)}</div>
+      <div class="meta" style="margin-bottom:6px">
+        <span>${escapeHtml(author.name || '')} &lt;${escapeHtml(author.email || '')}&gt;</span>
+        <span>${escapeHtml(formatDate(author.date))}</span>
+        <span class="text-mono">${escapeHtml(c.sha)}</span>
+      </div>
+      <div class="diff-stats" style="margin-bottom:6px">${files.length} files · <span class="add">+${stats.additions}</span> <span class="del">-${stats.deletions}</span></div>
+      ${files.map(f => `
+        <div class="file-row">
+          <span class="file-status ${escapeAttr(f.status)}">${escapeHtml(f.status)}</span>
+          <span class="text-mono truncate" style="flex:1">${escapeHtml(f.filename)}</span>
+          <span class="diff-stats"><span class="add">+${f.additions}</span> <span class="del">-${f.deletions}</span></span>
+        </div>`).join('')}
+    `;
+    detail.dataset.loaded = '1';
+  } catch (e) {
+    detail.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+/* ---------- 11. Module 5: Search ---------- */
+const searchState = { tab: 'repos', query: '' };
+
+function renderSearch(root) {
+  root.innerHTML = `
+    <div class="page-head">
+      <div><h1>Search</h1><div class="sub">GitHub-wide search · 30 req/min limit</div></div>
+    </div>
+    <div class="card" style="padding:14px">
+      <div class="row gap-sm" style="margin-bottom:10px">
+        <div class="row" style="background:var(--surface3);padding:3px;border-radius:8px;gap:0">
+          <button class="btn-sm" data-tab="repos" style="border-radius:6px">Repos</button>
+          <button class="btn-sm" data-tab="users" style="border-radius:6px">Users</button>
+        </div>
+      </div>
+      <input id="search-input" placeholder="Search repos or users…" />
+    </div>
+    <div id="search-results" class="mt-3"><div class="empty">Type something to start searching.</div></div>
+  `;
+  const input = $('#search-input');
+  const setTab = (t) => {
+    searchState.tab = t;
+    $$('[data-tab]').forEach(b => b.classList.toggle('btn-primary', b.dataset.tab === t));
+    if (input.value.trim()) doSearch();
+  };
+  $$('[data-tab]').forEach(b => { b.onclick = () => setTab(b.dataset.tab); });
+  setTab(searchState.tab);
+  const doSearch = debounce(async () => {
+    const q = input.value.trim(); searchState.query = q;
+    if (!q) { $('#search-results').innerHTML = '<div class="empty">Type something to start searching.</div>'; return; }
+    $('#search-results').innerHTML = skeletonCards(4);
+    try {
+      if (searchState.tab === 'repos') {
+        const data = await ghFetch(`/search/repositories?q=${encodeURIComponent(q)}&per_page=20`);
+        const items = data.items || [];
+        $('#search-results').innerHTML = items.length ? items.map(r => `
+          <div class="repo-item">
+            <div class="row1">
+              <a href="#explorer/${escapeAttr(r.owner.login)}/${escapeAttr(r.name)}" class="name">${escapeHtml(r.full_name)}</a>
+              <span class="pill ${r.private ? 'private' : 'public'}">${r.private ? 'Private' : 'Public'}</span>
+            </div>
+            ${r.description ? `<div class="desc">${escapeHtml(r.description)}</div>` : ''}
+            <div class="meta">
+              ${r.language ? `<span><i class="lang-dot"></i> ${escapeHtml(r.language)}</span>` : ''}
+              <span>⭐ ${formatNum(r.stargazers_count)}</span>
+              <span>🍴 ${formatNum(r.forks_count)}</span>
+              <span>Updated ${relativeTime(r.pushed_at)}</span>
+            </div>
+          </div>`).join('') : '<div class="empty">No repos found.</div>';
+      } else {
+        const data = await ghFetch(`/search/users?q=${encodeURIComponent(q)}&per_page=20`);
+        const items = data.items || [];
+        $('#search-results').innerHTML = items.length ? `<div class="grid grid-3">` + items.map(u => `
+          <div class="card" style="display:flex;align-items:center;gap:12px">
+            <img src="${escapeAttr(u.avatar_url)}" style="width:48px;height:48px;border-radius:50%" alt="" />
+            <div style="min-width:0;flex:1">
+              <div style="font-weight:700">${escapeHtml(u.login)}</div>
+              <div class="text-muted" style="font-size:12px">${escapeHtml(u.type)}</div>
+            </div>
+            <a class="btn-sm" target="_blank" rel="noopener" href="${escapeAttr(u.html_url)}">Open</a>
+          </div>`).join('') + '</div>' : '<div class="empty">No users found.</div>';
+      }
+    } catch (e) {
+      $('#search-results').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+    }
+  }, 350);
+  input.addEventListener('input', doSearch);
+}
+
+/* ---------- 12. Module 6: Notifications ---------- */
+const notifState = { items: [], filter: 'all' };
+
+async function renderNotifications(root) {
+  root.innerHTML = `
+    <div class="page-head">
+      <div><h1>Notifications</h1><div class="sub">Unread notifications across your repos</div></div>
+      <div class="page-actions">
+        <select id="nf-filter" style="width:auto"><option value="all">All types</option></select>
+        <button class="btn-ghost" id="nf-refresh">↻</button>
+        <button class="btn-primary" id="nf-mark-all">Mark all read</button>
+      </div>
+    </div>
+    <div id="notif-list" class="notif-list">${skeletonCards(4)}</div>
+  `;
+  $('#nf-refresh').onclick = () => loadNotifications();
+  $('#nf-mark-all').onclick = async () => {
+    const ok = await showModal({ title: 'Mark all as read', body: 'This marks all notifications as read on github.com.', confirmText: 'Mark all', danger: false });
+    if (!ok) return;
+    try {
+      await ghFetch('/notifications', { method: 'PUT', body: { read: true } });
+      showToast('All notifications marked as read', 'success');
+      notifState.items = []; renderNotifList(); updateNotifBadge(0);
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+  $('#nf-filter').onchange = () => { notifState.filter = $('#nf-filter').value; renderNotifList(); };
+  await loadNotifications();
+}
+
+async function loadNotifications() {
+  try {
+    const items = await ghFetch('/notifications?all=false&per_page=50');
+    notifState.items = items || [];
+    updateNotifBadge(notifState.items.length);
+    const types = Array.from(new Set(notifState.items.map(n => n.subject && n.subject.type).filter(Boolean))).sort();
+    const sel = $('#nf-filter');
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="all">All types</option>' + types.map(t => `<option value="${escapeAttr(t)}">${escapeHtml(t)}</option>`).join('');
+      if (types.includes(cur)) sel.value = cur;
+    }
+    renderNotifList();
+  } catch (e) {
+    showToast(e.message, 'error');
+    $('#notif-list').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderNotifList() {
+  const root = $('#notif-list'); if (!root) return;
+  const items = notifState.items.filter(n => notifState.filter === 'all' || (n.subject && n.subject.type === notifState.filter));
+  if (!items.length) { root.innerHTML = '<div class="empty"><h3>All caught up</h3>No unread notifications.</div>'; return; }
+  root.innerHTML = items.map(n => {
+    const t = (n.subject && n.subject.type) || 'Activity';
+    const ic = ({ Issue: 'I', PullRequest: 'P', Commit: 'C', Release: 'R', Discussion: 'D' })[t] || 'N';
+    return `
+      <div class="notif-item" data-id="${escapeAttr(n.id)}">
+        <div class="type-ic">${ic}</div>
+        <div class="body">
+          <div class="title truncate">${escapeHtml(n.subject && n.subject.title || '(untitled)')}</div>
+          <div class="meta">${escapeHtml(n.repository && n.repository.full_name || '')} · ${escapeHtml(t)} · ${relativeTime(n.updated_at)}</div>
+        </div>
+        <button class="btn-ghost btn-sm" data-act="read">Mark read</button>
+      </div>`;
+  }).join('');
+  $$('#notif-list .notif-item').forEach(el => {
+    const id = el.dataset.id;
+    const btn = el.querySelector('[data-act="read"]');
+    btn.onclick = async () => {
+      try {
+        await ghFetch(`/notifications/threads/${id}`, { method: 'PATCH' });
+        notifState.items = notifState.items.filter(n => n.id !== id);
+        updateNotifBadge(notifState.items.length);
+        renderNotifList();
+        showToast('Marked as read', 'success');
+      } catch (e) { showToast(e.message, 'error'); }
+    };
+  });
+}
+
+function updateNotifBadge(n) {
+  state.notifBadge = n;
+  ['#nav-notif-badge', '#bn-notif-badge'].forEach(s => {
+    const el = $(s); if (!el) return;
+    if (n > 0) { el.textContent = n > 99 ? '99+' : String(n); el.classList.remove('hidden'); }
+    else { el.classList.add('hidden'); }
+  });
+}
+
+/* ---------- 13. Module 7: Gists ---------- */
+const gistsState = { items: [] };
+
+async function renderGists(root) {
+  root.innerHTML = `
+    <div class="page-head">
+      <div><h1>Gists</h1><div class="sub">Manage your gists</div></div>
+      <div class="page-actions">
+        <button class="btn-ghost" id="gs-refresh">↻</button>
+        <button class="btn-primary" id="gs-new">+ New gist</button>
+      </div>
+    </div>
+    <div id="gists-list" class="repo-list">${skeletonCards(3)}</div>
+  `;
+  $('#gs-refresh').onclick = () => loadGists();
+  $('#gs-new').onclick = () => gistFormModal();
+  await loadGists();
+}
+
+async function loadGists() {
+  try {
+    gistsState.items = await ghFetch('/gists?per_page=50') || [];
+    renderGistList();
+  } catch (e) {
+    showToast(e.message, 'error');
+    $('#gists-list').innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderGistList() {
+  const root = $('#gists-list'); if (!root) return;
+  if (!gistsState.items.length) { root.innerHTML = '<div class="empty"><h3>No gists yet</h3>Click <strong>New gist</strong> to create your first.</div>'; return; }
+  root.innerHTML = gistsState.items.map(g => {
+    const fileNames = Object.keys(g.files || {});
+    const firstFile = fileNames[0] || '(no files)';
+    const desc = g.description || '(no description)';
+    return `
+      <div class="repo-item" data-id="${escapeAttr(g.id)}">
+        <div class="row1">
+          <a class="name truncate" href="${escapeAttr(g.html_url)}" target="_blank" rel="noopener">${escapeHtml(desc)}</a>
+          <span class="pill ${g.public ? 'public' : 'private'}">${g.public ? 'Public' : 'Secret'}</span>
+          <div class="actions">
+            <button class="btn-ghost btn-sm" data-act="copy">Copy URL</button>
+            <button class="btn-ghost btn-sm" data-act="edit">Edit</button>
+            <button class="btn-ghost btn-sm" data-act="delete" style="color:var(--danger)">Delete</button>
+          </div>
+        </div>
+        <div class="meta">
+          <span class="text-mono">${escapeHtml(firstFile)}</span>
+          ${fileNames.length > 1 ? `<span>+${fileNames.length - 1} more</span>` : ''}
+          <span>Updated ${relativeTime(g.updated_at)}</span>
+        </div>
+      </div>`;
+  }).join('');
+  $$('#gists-list .repo-item').forEach(el => {
+    const id = el.dataset.id;
+    $$('button[data-act]', el).forEach(btn => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        const g = gistsState.items.find(x => x.id === id); if (!g) return;
+        if (act === 'copy') { copyToClipboard(g.html_url); }
+        else if (act === 'edit') { gistFormModal(g); }
+        else if (act === 'delete') {
+          const ok = await showModal({ title: 'Delete gist', body: `Delete this gist? (${g.description || g.id})`, confirmText: 'Delete', danger: true });
+          if (!ok) return;
+          try {
+            await ghFetch(`/gists/${id}`, { method: 'DELETE' });
+            gistsState.items = gistsState.items.filter(x => x.id !== id);
+            renderGistList(); showToast('Gist deleted', 'success');
+          } catch (err) { showToast(err.message, 'error'); }
+        }
+      };
+    });
+  });
+}
+
+async function gistFormModal(existing) {
+  const firstFile = existing ? Object.keys(existing.files)[0] : '';
+  const firstContent = existing && existing.files[firstFile] ? (existing.files[firstFile].content || '') : '';
+  await showFormModal({
+    title: existing ? 'Edit gist' : 'New gist',
+    confirmText: existing ? 'Save' : 'Create',
+    html: `
+      <div class="form-row"><label>Description</label>
+        <input name="description" value="${escapeAttr(existing ? existing.description || '' : '')}" placeholder="Short description" /></div>
+      <div class="form-row"><label>Filename</label>
+        <input name="filename" required value="${escapeAttr(firstFile || 'snippet.txt')}" /></div>
+      <div class="form-row"><label>Content</label>
+        <textarea name="content" rows="10" class="mono" required>${escapeHtml(firstContent)}</textarea></div>
+      ${existing ? '' : `<div class="form-row row"><label style="margin:0;display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px">
+        <input type="checkbox" name="public" style="width:auto"> Public gist</label></div>`}
+    `,
+    onSubmit: async (data) => {
+      if (existing) {
+        const files = {};
+        if (data.filename !== firstFile) {
+          files[firstFile] = { filename: data.filename, content: data.content };
+        } else {
+          files[data.filename] = { content: data.content };
+        }
+        await ghFetch(`/gists/${existing.id}`, { method: 'PATCH', body: { description: data.description, files } });
+        showToast('Gist updated', 'success');
+      } else {
+        const files = {}; files[data.filename] = { content: data.content };
+        await ghFetch('/gists', { method: 'POST', body: { description: data.description, public: !!data.public, files } });
+        showToast('Gist created', 'success');
+      }
+      await loadGists();
+    },
+  });
+}
+
+/* ---------- 14. Module 8: Settings ---------- */
+function renderSettings(root) {
+  const pat = ls.get(LS.pat);
+  const cachedUser = ls.getJSON(LS.user);
+  root.innerHTML = `
+    <div class="page-head">
+      <div><h1>Settings</h1><div class="sub">Manage your GitHub PAT and connection</div></div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 10px;font-size:15px">Connection</h3>
+      <div class="conn-status ${pat && cachedUser ? 'connected' : ''}" id="conn-status">
+        <div class="dot"></div>
+        <div style="flex:1">
+          ${pat && cachedUser
+            ? `<div><strong>Connected</strong> as ${escapeHtml(cachedUser.login)}</div><div class="text-muted" style="font-size:12px">${escapeHtml(cachedUser.name || '')}</div>`
+            : `<div><strong>Not connected</strong></div><div class="text-muted" style="font-size:12px">Add a PAT below to get started.</div>`}
+        </div>
+        ${pat ? `<button class="btn-ghost" id="btn-disconnect" style="color:var(--danger)">Disconnect</button>` : ''}
+      </div>
+
+      <div style="margin-top:18px">
+        <label>Personal Access Token (PAT)</label>
+        <div class="input-group">
+          <input type="password" id="pat-input" placeholder="ghp_…" autocomplete="off" value="${escapeAttr(pat || '')}" />
+          <button class="btn-sm" id="pat-toggle" type="button">👁</button>
+        </div>
+        <div class="text-muted" style="font-size:12px;margin-top:6px">
+          Need a token? <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">Generate one on GitHub</a>.
+          Required scopes: <code>repo</code>, <code>gist</code>, <code>notifications</code>, <code>read:user</code>.
+        </div>
+        <div class="row gap-sm" style="margin-top:12px">
+          <button class="btn-primary" id="pat-save">Save & verify</button>
+          <button class="btn-ghost" id="pat-clear">Clear input</button>
+        </div>
+        <div id="pat-result" class="mt-3"></div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <h3 style="margin:0 0 10px;font-size:15px">Rate limit</h3>
+      <div id="rate-info" class="text-muted">${state.rateRemaining != null
+        ? `Remaining: <strong>${state.rateRemaining}</strong> / ${state.rateLimit} · Resets ${state.rateReset ? relativeTime(new Date(state.rateReset).toISOString()) : '—'}`
+        : 'Make a request to see rate limit info.'}</div>
+      <button class="btn-sm mt-2" id="rate-refresh">Refresh</button>
+    </div>
+
+    <div class="card mt-3">
+      <h3 style="margin:0 0 10px;font-size:15px">About</h3>
+      <div class="text-muted" style="font-size:13px">
+        Single-file GitHub manager. All data stays in your browser (<code>localStorage</code>).
+        No analytics, no server. PAT is sent only to <code>api.github.com</code>.
+      </div>
+    </div>
+  `;
+
+  $('#pat-toggle').onclick = () => {
+    const inp = $('#pat-input');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  };
+  $('#pat-clear').onclick = () => { $('#pat-input').value = ''; };
+  $('#pat-save').onclick = async () => {
+    const v = $('#pat-input').value.trim();
+    if (!v) { showToast('Enter a PAT first', 'error'); return; }
+    ls.set(LS.pat, v);
+    $('#pat-result').innerHTML = '<div class="text-muted">Verifying…</div>';
+    try {
+      const u = await ghFetch('/user');
+      ls.set(LS.user, u);
+      state.user = u;
+      $('#pat-result').innerHTML = `
+        <div class="row" style="margin-top:6px">
+          <img src="${escapeAttr(u.avatar_url)}" style="width:36px;height:36px;border-radius:50%" alt="" />
+          <div><strong>${escapeHtml(u.name || u.login)}</strong> (@${escapeHtml(u.login)})</div>
+        </div>`;
+      showToast('Token verified — welcome ' + (u.name || u.login), 'success');
+      ghFetch('/notifications?all=false').then(arr => updateNotifBadge(Array.isArray(arr) ? arr.length : 0)).catch(() => {});
+      renderSettings(root);
+    } catch (e) {
+      ls.del(LS.pat); ls.del(LS.user);
+      $('#pat-result').innerHTML = `<div class="text-muted" style="color:var(--danger)">${escapeHtml(e.message)}</div>`;
+    }
+  };
+  if (pat) {
+    $('#btn-disconnect').onclick = async () => {
+      const ok = await showModal({
+        title: 'Disconnect',
+        body: 'This removes your PAT and clears cached user/repo state from this browser. The token is not revoked on GitHub.',
+        confirmText: 'Disconnect', danger: true,
+      });
+      if (!ok) return;
+      Object.values(LS).forEach(k => ls.del(k));
+      state.user = null; reposCache.items = null; updateNotifBadge(0);
+      showToast('Disconnected', 'success');
+      setRoute('settings');
+    };
+  }
+  $('#rate-refresh').onclick = async () => {
+    try {
+      const r = await ghFetch('/rate_limit');
+      const core = r && r.resources && r.resources.core;
+      if (core) {
+        state.rateRemaining = core.remaining; state.rateLimit = core.limit; state.rateReset = core.reset * 1000;
+        $('#rate-info').innerHTML = `Remaining: <strong>${core.remaining}</strong> / ${core.limit} · Resets ${relativeTime(new Date(core.reset * 1000).toISOString())}`;
+      }
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+}
+
+/* ---------- 15. Init ---------- */
+function init() {
+  bindNav();
+  const lastPage = ls.get(LS.page);
+  if (!location.hash) {
+    location.hash = '#' + (lastPage && ROUTES.includes(lastPage) ? lastPage : 'dashboard');
+  }
+  state.user = ls.getJSON(LS.user);
+  renderRoute();
+
+  if (ls.get(LS.pat)) {
+    ghFetch('/notifications?all=false').then(arr => updateNotifBadge(Array.isArray(arr) ? arr.length : 0)).catch(() => {});
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      const bar = $('#find-bar');
+      if (bar && currentRoute === 'explorer' && exState.file && !exState.editing) {
+        e.preventDefault();
+        if (bar.classList.contains('hidden')) toggleFindBar();
+        else $('#find-input').focus();
+      }
+    }
+    if (e.key === 'Escape') {
+      const c = $('#modal-container');
+      if (c.classList.contains('active')) {
+        c.classList.remove('active'); c.innerHTML = '';
+      }
+    }
+  });
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+</script>
+</body>
+</html>
